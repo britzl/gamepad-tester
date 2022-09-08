@@ -1,0 +1,98 @@
+
+local BUTTONS = {
+	gamepad_back =			{ url = "#button_back",		idle = "button", pressed = "button_pressed" },
+	gamepad_start =			{ url = "#button_start",	idle = "button", pressed = "button_pressed" },
+	gamepad_guide =			{ url = "#button_guide",	idle = "button", pressed = "button_pressed" },
+
+	gamepad_lstick_left =	{ url = "#left_stick",		idle = "stick", pressed = "stick_left" },
+	gamepad_lstick_right =	{ url = "#left_stick",		idle = "stick", pressed = "stick_right" },
+	gamepad_lstick_up =		{ url = "#left_stick",		idle = "stick", pressed = "stick_up" },
+	gamepad_lstick_down =	{ url = "#left_stick",		idle = "stick", pressed = "stick_down" },
+	gamepad_lstick_click =	{ url = "#left_stick",		idle = "stick", pressed = "stick_pressed" },
+	
+	gamepad_rstick_left =	{ url = "#right_stick",		idle = "stick", pressed = "stick_left" },
+	gamepad_rstick_right =	{ url = "#right_stick",		idle = "stick", pressed = "stick_right" },
+	gamepad_rstick_up =		{ url = "#right_stick",		idle = "stick", pressed = "stick_up" },
+	gamepad_rstick_down =	{ url = "#right_stick",		idle = "stick", pressed = "stick_down" },
+	gamepad_rstick_click =	{ url = "#right_stick",		idle = "stick", pressed = "stick_pressed" },
+	
+	gamepad_lpad_left =		{ url = "#left_pad_left",	idle = "pad_left",	pressed = "pad_left_pressed" },
+	gamepad_lpad_right =	{ url = "#left_pad_right",	idle = "pad_right",	pressed = "pad_right_pressed" },
+	gamepad_lpad_up =		{ url = "#left_pad_up",		idle = "pad_up", 	pressed = "pad_up_pressed" },
+	gamepad_lpad_down =		{ url = "#left_pad_down",	idle = "pad_down",	pressed = "pad_down_pressed" },
+
+	gamepad_rpad_left =		{ url = "#right_pad_left",	idle = "pad_left",	pressed = "pad_left_pressed" },
+	gamepad_rpad_right =	{ url = "#right_pad_right",	idle = "pad_right",	pressed = "pad_right_pressed" },
+	gamepad_rpad_up =		{ url = "#right_pad_up",	idle = "pad_up", 	pressed = "pad_up_pressed" },
+	gamepad_rpad_down =		{ url = "#right_pad_down",	idle = "pad_down",	pressed = "pad_down_pressed" },
+
+	gamepad_lshoulder =		{ url = "#left_shoulder",	idle = "shoulder_left",		pressed = "shoulder_left_pressed" },
+	gamepad_rshoulder =		{ url = "#right_shoulder",	idle = "shoulder_right",	pressed = "shoulder_right_pressed" },
+	gamepad_ltrigger =		{ url = "#left_trigger",	idle = "trigger_left",		pressed = "trigger_left_pressed" },
+	gamepad_rtrigger =		{ url = "#right_trigger",	idle = "trigger_right",		pressed = "trigger_right_pressed" },
+}
+local b = {} for id,button in pairs(BUTTONS) do b[hash(id)] = button end BUTTONS = b
+
+
+function init(self)
+	msg.post(".", "acquire_input_focus")
+	self.inputs = {}
+end
+
+local function update_button(url, action, idle, pressed)
+	if action.pressed then
+		sprite.play_flipbook(url, pressed)
+	elseif action.released then
+		sprite.play_flipbook(url, idle)
+	end
+end
+
+function on_input(self, action_id, action)
+	if not action_id then
+		return
+	end
+
+	if action_id == hash("gamepad_connected") then
+		label.set_text("info#label", action.gamepad_name .. " #" .. action.gamepad)
+	elseif action_id == hash("gamepad_disconnected") then
+		label.set_text("info#label", "-")
+	elseif action_id == hash("gamepad_raw") then
+		local hats = "HATS\n"
+		for i,v in ipairs(action.gamepad_hats or {}) do
+			hats = hats .. ("%d = %d\n"):format(i, v)
+		end
+		label.set_text("raw#hats", hats)
+
+		local axis = "AXIS\n"
+		for i,v in ipairs(action.gamepad_axis or {}) do
+			axis = axis .. ("%d = %d\n"):format(i, v)
+		end
+		label.set_text("raw#axis", axis)
+
+		local buttons = "BUTTONS\n"
+		for i,v in ipairs(action.gamepad_buttons or {}) do
+			buttons = buttons .. ("%d = %d\n"):format(i, v)
+		end
+		label.set_text("raw#buttons", buttons)
+	else
+		local button = BUTTONS[action_id]
+		if button then
+			if action.value > 0.7 then
+				action.pressed = true
+				self.inputs[action_id] = true
+			elseif action.value < 0.4 and self.inputs[action_id] then
+				action.released = true
+				self.inputs[action_id] = false
+			end
+			update_button(button.url, action, button.idle, button.pressed)
+		else
+			print("unknown input", action_id)
+		end
+	end
+end
+
+function on_reload(self)
+	-- Add reload-handling code here
+	-- Learn more: https://defold.com/manuals/hot-reload/
+	-- Remove this function if not needed
+end
